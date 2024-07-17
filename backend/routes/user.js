@@ -1,8 +1,9 @@
 const express = require("express");
 const { z } = require("zod");
-const { User } = require("../db");
+const { User, Account } = require("../db");
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../config");
+const { authMiddleware } = require("../middleware");
 
 const router = express.Router();
 const signupBody = z.object({
@@ -37,8 +38,12 @@ router.post("/signup", async (req, res) => {
       lastName: req.body.lastName,
     });
 
-    const id = user._id;
-    const token = jwt.sign({ id }, JWT_SECRET);
+    const userId = user._id;
+    await Account.create({
+      userId,
+      balance: 1 + Math.random() * 10000,
+    });
+    const token = jwt.sign({ userId }, JWT_SECRET);
 
     res.status(200).json({
       message: "User created sucessfully",
@@ -80,6 +85,55 @@ router.post("/signin", async (req, res) => {
   const token = jwt.sign({ id: user._id }, JWT_SECRET);
   res.status(200).json({
     token,
+  });
+});
+
+const updateBody = z.object({
+  password: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+});
+
+router.put("/", authMiddleware, async (res, req) => {
+  try {
+    const { success } = updateBody.safeParse(req.body);
+    if (!success) {
+      return res.status(411).json({ message: "Error occured" });
+    }
+    const id = req.userId;
+    await User.updateOne({ _id: id }, req.body);
+    return res.status(200).json({
+      message: "updated sucessfully",
+    });
+  } catch (errorMessage) {
+    return res.status(411).json({ errorMessage });
+  }
+});
+
+router.get("/bulk", authMiddleware, async (res, req) => {
+  const filter = req.query.filter || "";
+  const users = await User.find({
+    $or: [
+      {
+        firstName: {
+          $regex: filter,
+        },
+      },
+      {
+        lastName: {
+          $regex: filter,
+        },
+      },
+    ],
+  });
+
+  res.status(200).json({
+    user: users.map((user) => ({
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      _id: user._id,
+    })),
   });
 });
 
