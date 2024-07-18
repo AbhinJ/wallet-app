@@ -82,7 +82,7 @@ router.post("/signin", async (req, res) => {
     return;
   }
 
-  const token = jwt.sign({ id: user._id }, JWT_SECRET);
+  const token = jwt.sign({ userId: user._id }, JWT_SECRET);
   res.status(200).json({
     token,
   });
@@ -94,7 +94,7 @@ const updateBody = z.object({
   lastName: z.string().optional(),
 });
 
-router.put("/", authMiddleware, async (res, req) => {
+router.put("/", authMiddleware, async (req, res) => {
   try {
     const { success } = updateBody.safeParse(req.body);
     if (!success) {
@@ -110,7 +110,7 @@ router.put("/", authMiddleware, async (res, req) => {
   }
 });
 
-router.get("/bulk", authMiddleware, async (res, req) => {
+router.get("/bulk", authMiddleware, async (req, res) => {
   const filter = req.query.filter || "";
   const users = await User.find({
     $or: [
@@ -134,6 +134,24 @@ router.get("/bulk", authMiddleware, async (res, req) => {
       lastName: user.lastName,
       _id: user._id,
     })),
+  });
+});
+
+router.get("/", authMiddleware, async (req, res) => {
+  return res.status(200).json({
+    id: req.userId,
+  });
+});
+
+router.get("/me", authMiddleware, async (req, res) => {
+  const user = await User.findOne({ _id: req.userId });
+  const { balance } = await Account.findOne({ userId: req.userId });
+  return res.json({
+    username: user.username,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    _id: user._id,
+    balance,
   });
 });
 

@@ -15,7 +15,7 @@ router.get("/balance", authMiddleware, async (req, res) => {
 
 const transferBody = z.object({
   to: z.string(),
-  amount: z.number(),
+  amount: z.string(),
 });
 
 router.post("/transfer", authMiddleware, async (req, res) => {
@@ -51,7 +51,7 @@ router.post("/transfer", authMiddleware, async (req, res) => {
     { userId: to },
     {
       $inc: {
-        balance: -amount,
+        balance: amount,
       },
     }
   ).session(session);
@@ -60,7 +60,7 @@ router.post("/transfer", authMiddleware, async (req, res) => {
     { userId: by },
     {
       $inc: {
-        balance: amount,
+        balance: -amount,
       },
     }
   ).session(session);
